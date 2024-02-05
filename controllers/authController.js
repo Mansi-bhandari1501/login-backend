@@ -4,7 +4,7 @@ import JWT from "jsonwebtoken";
 
 export const registerController = async (req, resp) => {
     try {
-        const { name, email, password,address, phone  } = req.body
+        const { name, email, password,address, phone , answer } = req.body
         //validations
         if (!name) {
             return resp.send({ error: 'Name is required' })
@@ -21,6 +21,9 @@ export const registerController = async (req, resp) => {
         if (!address) {
             return resp.send({ error: 'address is required' })
         }
+        if (!address) {
+            return resp.send({ error: 'answer is required' })
+        }
         //check user
         const existinguser = await userModel.findOne({ email });
         //existing user
@@ -33,7 +36,14 @@ export const registerController = async (req, resp) => {
         //register user
         const hashedPassword = await hashPassword(password);
         //save password
-        const user =  await new userModel({name,email,address,password:hashedPassword, phone}).save();
+        const user =  await new userModel({
+          name,
+          email,
+          address,
+          password:hashedPassword,
+          phone,
+          answer,
+          }).save();
         
          resp.status(201).send({
             success:true,
@@ -116,6 +126,7 @@ export const loginController = async (req, res) => {
           phone: user.phone,
           adddress: user.address,
           role: user.role,
+          answer: user.answer,
         },
         token,
       });
@@ -128,6 +139,44 @@ export const loginController = async (req, res) => {
       });
     }
   };
+  //forgotPasswordController
+
+export const forgotPasswordController = async (req, res) => {
+  try {
+    const { email, answer, newPassword } = req.body;
+    if (!email) {
+      res.status(400).send({ message: "Emai is required" });
+    }
+    if (!answer) {
+      res.status(400).send({ message: "answer is required" });
+    }
+    if (!newPassword) {
+      res.status(400).send({ message: "New Password is required" });
+    }
+    //check
+    const user = await userModel.findOne({ email, answer });
+    //validation
+    if (!user) {
+      return res.status(404).send({
+        success: false,
+        message: "Wrong Email Or Answer",
+      });
+    }
+    const hashed = await hashPassword(newPassword);
+    await userModel.findByIdAndUpdate(user._id, { password: hashed });
+    res.status(200).send({
+      success: true,
+      message: "Password Reset Successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Something went wrong",
+      error,
+    });
+  }
+};
   //test controller
   export const testController = (req,res)=>{
     console.log('protected Router');
